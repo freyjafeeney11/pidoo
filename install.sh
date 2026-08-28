@@ -12,7 +12,6 @@ fi
 
 # 2. Make sure Ollama is running, then pull the model
 echo "Pulling the brain (llama3.2:3b)... this might take a minute..."
-# Start ollama in the background just in case it isn't running
 ollama serve > /dev/null 2>&1 & 
 sleep 3
 ollama pull llama3.2:3b
@@ -23,16 +22,24 @@ mkdir -p ~/.pidoo
 # 4. Set up a Python Virtual Environment and install dependencies
 echo "Setting up Python environment..."
 python3 -m venv ~/.pidoo/venv
-~/.pidoo/venv/bin/pip install -r requirements.txt
+~/.pidoo/venv/bin/pip install --upgrade pip
+if [ -f "requirements.txt" ]; then
+    ~/.pidoo/venv/bin/pip install -r requirements.txt
+else
+    ~/.pidoo/venv/bin/pip install requests
+fi
 
 # 5. Copy the main script to the hidden folder
-cp pidoo.py ~/.pidoo/
+if [ -f "pidoo.py" ]; then
+    cp pidoo.py ~/.pidoo/
+else
+    echo "⚠️ Warning: pidoo.py not found in current directory. Make sure it's placed there."
+fi
 
-# 6. Create an executable command in ~/.local/bin
+# 6. Create an executable command wrapper in ~/.local/bin
 mkdir -p ~/.local/bin
 cat << 'EOF' > ~/.local/bin/pidoo
 #!/bin/bash
-# Automatically start ollama in the background if it's not running
 if ! pgrep -x "ollama" > /dev/null; then
     ollama serve > /dev/null 2>&1 &
 fi
@@ -41,10 +48,15 @@ EOF
 
 chmod +x ~/.local/bin/pidoo
 
+# 7. Force add ~/.local/bin to her Zsh PATH permanently
+if ! grep -q ".local/bin" ~/.zshrc 2>/dev/null; then
+    echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
 echo ""
 echo "🎉 Pidoo is successfully installed!"
-echo "Make sure ~/.local/bin is in your system's PATH."
-echo "To wake Pidoo up, just open a new terminal and type:"
+echo "To wake Pidoo up, just open a brand new terminal window and type:"
 echo ""
 echo "    pidoo"
 echo ""
